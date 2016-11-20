@@ -27,6 +27,7 @@ The implemented functions are as  such:
 * redisUpdateOnSet
 * redisDeleteFromSet
 * redisGetKeys
+* redisGetKeyCount
 * redisLength
 * redisGetKeyScore
 
