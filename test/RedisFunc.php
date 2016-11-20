@@ -304,13 +304,23 @@
             $key .= '*';
         return $Redis->keys($key);
     }
+    
+    //returns only the count of the keys beginning with the given key regex
+    function redisGetKeyCount($key){
+        //TO-DO
+        $Redis = initRedis();
+        if(strpos($key, '*') === false)
+            $key .= '*';
+        return count( $Redis->keys($key));
+    }
 
     //returns how many items exist on the key
     function redisLength($key){
         $dataType = redisGetKeyDataType($key);
-
-        if ($dataType != REDIS_SORTED_SET_DATA_TYPE && $dataType != REDIS_SET_DATA_TYPE)
-            return false;
+        
+        if ($dataType != REDIS_SORTED_SET_DATA_TYPE && $dataType != REDIS_SET_DATA_TYPE){
+            return redisGetKeyCount($key);
+        }
 
         $Redis = initRedis();
         if($dataType == REDIS_SORTED_SET_DATA_TYPE){

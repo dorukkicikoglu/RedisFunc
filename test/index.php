@@ -12,24 +12,50 @@
 
 include_once "RedisFunc.php";
 
-/////////PRODUCTS/////////
+if (isset($_POST['addProduct']))
+    addProduct($_POST['productName']);
+if (isset($_POST['deleteProduct']))
+    deleteProduct($_POST['productName']);
+if (isset($_POST['bringToTop']))
+    bringProductUp(true, $_POST['productName']);
+if (isset($_POST['bringToBottom']))
+    bringProductUp(false, $_POST['productName']);
+if (isset($_POST['deleteAllProducts']))
+    deleteAllProducts();
 
-if (isset($_POST['productName'])) {
-    redisSet(REDIS_PRODUCTS, $_POST['productName']);
+if (isset($_POST['addUser']))
+    addUser($_POST['userName'], $_POST['userAge'], $_POST['userGender']);
+if (isset($_POST['deleteUser']))
+    deleteUser ($_POST['userKey']);
+if (isset($_POST['updateUser']))
+    updateUser($_POST['userKey'], $_POST['userName'], $_POST['userAge'], $_POST['userGender']);
+if (isset($_POST['deleteAllUsers']))
+    deleteAllUsers();
+
+/////////PRODUCTS FUNCTIONS/////////
+
+function addProduct($productName){
+    redisSet(REDIS_PRODUCTS, $productName);
 }
-if (isset($_POST['deleteProduct'])) {
-    redisDeleteFromSet(REDIS_PRODUCTS, $_POST['deleteProduct']);
+
+function deleteProduct($productName){
+    redisDeleteFromSet(REDIS_PRODUCTS, $productName);
 }
-if (isset($_POST['bringToTop'])) {
-    redisDeleteFromSet(REDIS_PRODUCTS, $_POST['bringToTop']);
-    redisSet(REDIS_PRODUCTS, [time() * -1 => $_POST['bringToTop']]);  //minimum value needed to be at top. -1 * time(), current timestamp, will be the new score.
+
+function bringProductUp($top, $productName){
+    redisDeleteFromSet(REDIS_PRODUCTS, $productName);
+    if($top)
+        $score = time() * -1;
+    else $score = time(); 
+    redisSet(REDIS_PRODUCTS, [$score => $productName]);  //minimum value needed to be at top. -1 * time(), current timestamp, will be the new score.
 }
-if (isset($_POST['bringToBottom'])) {
-    redisDeleteFromSet(REDIS_PRODUCTS, $_POST['bringToBottom']);
-    redisSet(REDIS_PRODUCTS, [time() => $_POST['bringToBottom']]);  //maximum value needed to be at bottom. time(), current timestamp, will be the new score.
+
+function deleteAllProducts(){
+    redisDelete(REDIS_PRODUCTS.'*'); //deletes all keys starting with matching key
 }
-if (isset($_POST['deleteAllProducts'])) {
-    redisDelete(REDIS_PRODUCTS); //deletes all keys starting with matching key
+
+function getProductsCount() {
+    return redisLength(REDIS_PRODUCTS);
 }
 
 function getProductsHTML() {
@@ -42,21 +68,24 @@ function getProductsHTML() {
                         <div class="rowButton">
                             <form method="post">
                                 <input type="hidden" value="' . $productName . '" name="deleteProduct" />
+                                <input type="hidden" value="' . $productName . '" name="productName" />
                                 <input type="Submit" value="Delete" />
                             </form>
                         </div>	
                         &nbsp;&nbsp;	
                         <div class="rowButton">
                             <form method="post">
-                                <input type="hidden" value="' . $productName . '" name="bringToTop" />
-                                <input type="Submit" value="Bring To Top" />
+                                <input type="hidden" value="' . $productName . '" name="bringToBottom" />
+                                <input type="hidden" value="' . $productName . '" name="productName" />
+                                <input type="Submit" value="Bring To Bottom" />
                             </form>
                         </div>	
                         &nbsp;&nbsp;	
                         <div class="rowButton">
                             <form method="post">
-                                <input type="hidden" value="' . $productName . '" name="bringToBottom" />
-                                <input type="Submit" value="Bring To Bottom" />
+                                <input type="hidden" value="' . $productName . '" name="bringToTop" />
+                                <input type="hidden" value="' . $productName . '" name="productName" />
+                                <input type="Submit" value="Bring To Top" />
                             </form>
                         </div>	
                     </div>
@@ -65,47 +94,39 @@ function getProductsHTML() {
     return $html;
 }
 
-function getProductsCount() {
-    return redisLength(REDIS_PRODUCTS);
-}
+/////////USERS FUNCTIONS/////////
 
-/////////USERS/////////
-
-if (isset($_POST['userName'])) {
-    addUser();
-}
-if (isset($_POST['deleteUser'])) {
-    redisDelete($_POST['deleteUser']);
-}
-if (isset($_POST['updateUser'])) {
-    updateUser($_POST['updateUser']);
-}
-if (isset($_POST['deleteAllUsers'])) {
-    redisDelete(REDIS_USERS.'*'); //deletes all keys starting with matching key
-}
-
-function addUser(){
+function addUser($name, $age, $gender){
     $cacheKey = REDIS_USERS.':'.time();
 
     redisSet($cacheKey, Array(
-        'userName' => $_POST['userName'],
-        'age' => $_POST['userAge'],
-        'gender' => $_POST['userGender'],
+        'userName' => $name,
+        'age' => $age,
+        'gender' => $gender,
         'addDate' => date()
     ));
 }
 
-function updateUser($userKey){
-    redisUpdateOnSet($userKey, 'userName', $_POST['editUserName']);
-    redisUpdateOnSet($userKey, 'age', $_POST['editUserAge']);
-    redisUpdateOnSet($userKey, 'gender', $_POST['editUserGender']);
+function updateUser($userKey, $name, $age, $gender){
+    redisUpdateOnSet($userKey, 'userName', $name);
+    redisUpdateOnSet($userKey, 'age', $age);
+    redisUpdateOnSet($userKey, 'gender', $gender);
 }
 
-$usersCount;
+function deleteUser($userKey){
+    redisDelete($userKey);
+}
+
+function deleteAllUsers(){
+    redisDelete(REDIS_USERS.'*'); //deletes all keys starting with matching key
+}
+
+function getUsersCount() {
+    return redisLength(REDIS_USERS);
+}
+
 function getUsersHTML() {
-    global $usersCount;
     $keys = redisGetKeys(REDIS_USERS);
-    $usersCount = count($keys);
     
     foreach ($keys as $userKey) {
         $userData = redisGet($userKey);
@@ -116,15 +137,17 @@ function getUsersHTML() {
         $html .= '
                     <div class="row">
                         <form method="post" style="float:left;">
-                            <div class="cell"><input type="text" name="editUserName" value="' . $userName . '" /></div>	
-                            <div class="cell"><input type="text" name="editUserAge" value="' . $userAge . '" /></div>	
-                            <div class="cell"><input type="text" name="editUserGender" value="' . $userGender . '" /></div>		
-                            <input type="hidden" name="updateUser" value="'.$userKey.'" />
+                            <div class="cell"><input type="text" name="userName" value="' . $userName . '" /></div>	
+                            <div class="cell"><input type="text" name="userAge" value="' . $userAge . '" /></div>	
+                            <div class="cell"><input type="text" name="userGender" value="' . $userGender . '" /></div>		
+                            <input type="hidden" name="updateUser" />
+                            <input type="hidden" name="userKey" value="'.$userKey.'" />
                             <input type="Submit" value="Save" />
                         </form>
                         <div class="rowButton">
                             <form method="post">
                                 <input type="hidden" value="' . $userKey . '" name="deleteUser" />
+                                <input type="hidden" value="' . $userKey . '" name="userKey" />
                                 <input type="Submit" value="Delete" />
                             </form>
                         </div>	
@@ -189,16 +212,15 @@ function getUsersHTML() {
                 <input type="Submit" name="addUser" value="Add User!" />
             </form>
             
-            <?php $usersHTML = getUsersHTML(); ?>
             <div style="margin-top: 9px;width: 608px;padding-bottom: 2px;">
-                There are <?php echo $usersCount; ?> users!
+                There are <?php echo getUsersCount(); ?> users!
                 <form method="post" style="float: right;">
                     <input type="Submit" name="deleteAllUsers" value="Delete All Users!" />
                 </form>
             </div>
 
             <div class="rowsList usersList" style="width:610px;"/>  
-                <?php echo $usersHTML; ?>
+                <?php echo getUsersHTML(); ?>
             </div>
         </div>
 

@@ -192,12 +192,21 @@ redisGetKeys:
 
 	*This function returns the keys beginning with the given key regex
 	
-	This line will return all keys that begin with REDIS_USERS key (hence, all user keys)
+	This line will return all keys that begin with REDIS_USERS key
 	$keys = redisGetKeys(REDIS_USERS);
 	
+redisGetKeyCount:
+
+        *This function returns only the count of the keys beginning with the given key regex
+	
+        This line will return how many keys exist begining with REDIS_USERS key
+        $keys = redisGetKeyCount(REDIS_USERS);
+
 redisLength:
 
-	*This function returns how many items exist on a set. It supports sets or sorted sets.
+	*This function returns
+            *how many items exist on a set, if called on a set or sorted set.
+            *how many keys exist that start with the given pattern
 	
 	This line will return how many items exist on the cart whose ID is 10.
 	$count = redisLength(REDIS_CART_PRODUCT_IDS.':10');
